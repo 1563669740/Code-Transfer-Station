@@ -18,16 +18,19 @@ set -euo pipefail
 #   FETCH_RETRY_DELAY  git fetch 重试间隔（秒），默认 10
 #   LOG_PUSH_REMOTE    日志回传远端（Git remote 名或 URL），不设置则不回传
 #   LOG_PUSH_BRANCH    日志回传分支，默认 run-logs
+#   LOG_PUSH_MODE      run-output 只回传本次 run.sh 输出；full 回传完整诊断日志
+#   RUN_OUTPUT_LOG     固定脚本输出文件，默认 $LOG_DIR/latest_run_output.log
+#   LOG_RETENTION_DAYS 本机时间戳日志保留天数，默认 14；设为 0 不清理
 #   PIP_INDEX_URL      Python 依赖安装镜像源，默认使用国内镜像并回退到官方源
 #   PIP_INSTALL_TIMEOUT  pip 安装单个源的整体超时秒数，默认 300
 #
 # 行为：
 #   1. git fetch 检查远端是否有新 commit（失败自动重试）
 #   2. 如果远端有新 commit 且该 commit 未被测试过 → git merge --ff-only 拉取
-#   3. 执行 bash run.sh（带超时保护）
+#   3. 执行 bash run.sh（带超时保护），同时把本次 stdout/stderr 写入 latest_run_output.log
 #   4. 执行 python3 -m pytest -q（带超时保护）
-#   5. 结果写入带时间戳的日志文件，latest.log 始终指向最新一次
-#   6. 可选：将日志推送到远端日志仓库/分支
+#   5. 完整诊断日志写入带时间戳的日志文件，latest.log 始终指向最新一次
+#   6. 可选：将 latest_run_output.log 以固定文件名推送到远端日志仓库/分支
 
 PROJECT_DIR="${PROJECT_DIR:-$HOME/codex_projects/project}"
 BRANCH="${BRANCH:-main}"
@@ -39,6 +42,9 @@ FETCH_RETRIES="${FETCH_RETRIES:-3}"
 FETCH_RETRY_DELAY="${FETCH_RETRY_DELAY:-10}"
 LOG_PUSH_REMOTE="${LOG_PUSH_REMOTE:-}"
 LOG_PUSH_BRANCH="${LOG_PUSH_BRANCH:-run-logs}"
+LOG_PUSH_MODE="${LOG_PUSH_MODE:-run-output}"
+RUN_OUTPUT_LOG="${RUN_OUTPUT_LOG:-$LOG_DIR/latest_run_output.log}"
+LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-14}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${VENV_DIR:-.venv}"
 INSTALL_DEPS="${INSTALL_DEPS:-1}"
@@ -61,7 +67,6 @@ echo "[INFO] run_timeout=${RUN_TIMEOUT}s fetch_retries=$FETCH_RETRIES"
 echo "[INFO] log_push_remote=${LOG_PUSH_REMOTE:-disabled}"
 echo "[INFO] pid=$$"
 
-# 检查 timeout 命令是否可用
 if ! command -v timeout >/dev/null 2>&1; then
   echo "[WARN] 'timeout' command not found; run.sh / pytest will have no execution time limit" >&2
   HAS_TIMEOUT=0
@@ -95,19 +100,48 @@ prepare_python_env() {
   bash scripts/install_python_deps.sh requirements.txt
 }
 
+cleanup_local_logs() {
+  if [ "$LOG_RETENTION_DAYS" -gt 0 ] 2>/dev/null; then
+    find "$LOG_DIR" -maxdepth 1 -type f -mtime +"$LOG_RETENTION_DAYS" \
+      \( -name '*.log' -o -name '*.executed' \) \
+      ! -name 'latest_run_output.log' -delete 2>/dev/null || true
+  fi
+}
+
+run_project_entry() {
+  echo "[INFO] running project entry: bash run.sh"
+  : > "$RUN_OUTPUT_LOG"
+
+  set +e
+  if [ "$HAS_TIMEOUT" -eq 1 ] && [ "$RUN_TIMEOUT" -gt 0 ]; then
+    timeout --signal=KILL "${RUN_TIMEOUT}s" bash run.sh 2>&1 | tee "$RUN_OUTPUT_LOG"
+    rc=${PIPESTATUS[0]}
+  else
+    bash run.sh 2>&1 | tee "$RUN_OUTPUT_LOG"
+    rc=${PIPESTATUS[0]}
+  fi
+  set -e
+
+  if [ "$rc" -eq 0 ]; then
+    return 0
+  elif [ "$rc" -eq 137 ]; then
+    echo "[ERROR] bash run.sh timed out after ${RUN_TIMEOUT}s (killed)"
+  else
+    echo "[ERROR] bash run.sh failed with exit code $rc"
+  fi
+  exit 1
+}
+
 while true; do
   ts="$(date +%Y%m%d_%H%M%S)"
   log="$LOG_DIR/${ts}.log"
   executed_marker="$LOG_DIR/${ts}.executed"
   rm -f "$executed_marker"
 
-  # 每次轮询写入独立的日志文件
-  # 使用 ( ) 子 shell 控制错误范围，确保单次失败不影响守护进程继续运行
   (
     echo "[INFO] time=$ts"
     echo "[INFO] project=$PROJECT_DIR branch=$BRANCH"
 
-    # ── 1. 拉取远端最新引用（带重试） ──────────────────────
     fetch_ok=0
     for i in $(seq 1 "$FETCH_RETRIES"); do
       if git fetch origin "$BRANCH" 2>&1; then
@@ -122,7 +156,6 @@ while true; do
       exit 1
     fi
 
-    # ── 2. 比较本地、远端、上次执行的 SHA ─────────────────
     local_sha="$(git rev-parse HEAD)"
     remote_sha="$(git rev-parse "origin/$BRANCH")"
     last_run_file="$STATE_DIR/last_run_${BRANCH}"
@@ -130,16 +163,13 @@ while true; do
 
     echo "[INFO] local=$local_sha remote=$remote_sha last_run=$last_run_sha"
 
-    # ── 3. 如果远端最新 commit 已经被测试过，跳过本轮 ─────
     if [ "$remote_sha" = "$last_run_sha" ]; then
       echo "[INFO] remote commit already tested; nothing to do."
       exit 0
     fi
 
-    # Mark this poll as a real execution attempt so idle polls do not push logs.
     touch "$executed_marker"
 
-    # ── 4. 如果本地落后于远端，快进合并 ────────────────────
     if [ "$local_sha" != "$remote_sha" ]; then
       echo "[INFO] new commit detected; pulling with --ff-only."
       if ! git merge --ff-only "origin/$BRANCH" 2>&1; then
@@ -149,26 +179,11 @@ while true; do
       fi
     fi
 
-    # ── 5. 执行项目入口（带超时保护） ──────────────────────
     echo "[INFO] preparing Python environment"
     prepare_python_env
 
-    echo "[INFO] running project entry: bash run.sh"
-    if [ "$HAS_TIMEOUT" -eq 1 ] && [ "$RUN_TIMEOUT" -gt 0 ]; then
-      timeout --signal=KILL "${RUN_TIMEOUT}s" bash run.sh || {
-        rc=$?
-        if [ "$rc" -eq 137 ]; then
-          echo "[ERROR] bash run.sh timed out after ${RUN_TIMEOUT}s (killed)"
-        else
-          echo "[ERROR] bash run.sh failed with exit code $rc"
-        fi
-        exit 1
-      }
-    else
-      bash run.sh
-    fi
+    run_project_entry
 
-    # ── 6. 运行测试（带超时保护） ──────────────────────────
     echo "[INFO] running tests: python3 -m pytest -q"
     if [ "$HAS_TIMEOUT" -eq 1 ] && [ "$RUN_TIMEOUT" -gt 0 ]; then
       timeout --signal=KILL "${RUN_TIMEOUT}s" python3 -m pytest -q || {
@@ -184,29 +199,32 @@ while true; do
       python3 -m pytest -q
     fi
 
-    # ── 7. 记录本次已执行的 commit ─────────────────────────
     git rev-parse HEAD > "$last_run_file"
     echo "[INFO] success commit=$(git rev-parse HEAD)"
 
   ) 2>&1 | tee "$log" || true
-  # 注意：上面用 ( ) 子 shell，exit 只退出子 shell，不会终止守护进程
-  # 使用 tee 将输出同时写入日志文件和终端，方便实时观看执行过程
 
-  # 更新 latest 软链接
   ln -sfn "$log" "$LOG_DIR/latest.log"
 
-  # ── 8. 可选：推送日志到远端 ──────────────────────────────
   if [ -f "$executed_marker" ] && [ -n "$LOG_PUSH_REMOTE" ]; then
+    push_log_file="$log"
+    push_remote_name=""
+    if [ "$LOG_PUSH_MODE" = "run-output" ] && [ -f "$RUN_OUTPUT_LOG" ]; then
+      push_log_file="$RUN_OUTPUT_LOG"
+      push_remote_name="latest_run_output.log"
+    fi
+
     echo "[INFO] pushing execution log to ${LOG_PUSH_REMOTE}/${LOG_PUSH_BRANCH}" | tee -a "$log"
     LOG_PUSH_REMOTE="$LOG_PUSH_REMOTE" \
     LOG_PUSH_BRANCH="$LOG_PUSH_BRANCH" \
     LOG_DIR="$LOG_DIR" \
-    LOG_FILE="$log" \
+    LOG_FILE="$push_log_file" \
+    LOG_REMOTE_NAME="$push_remote_name" \
     PROJECT_DIR="$PROJECT_DIR" \
     bash "${PROJECT_DIR}/scripts/server_push_log.sh" 2>&1 | tee -a "$log" || true
   fi
   rm -f "$executed_marker"
+  cleanup_local_logs
 
   sleep "$INTERVAL_SECONDS"
 done
-

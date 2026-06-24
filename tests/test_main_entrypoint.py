@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from src.crypto_demo import crypto_result
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,4 +26,4 @@ def test_main_default_runs_current_command():
         capture_output=True,
         text=True,
     )
-    assert result.stdout.strip() == "hello dudu666"
+    assert result.stdout.strip() == crypto_result()

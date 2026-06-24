@@ -194,6 +194,9 @@ while true:
 | 执行超时 | `RUN_TIMEOUT`（默认 600s），防止 `run.sh` 或 `pytest` 挂起卡死轮询 |
 | 拉取重试 | `FETCH_RETRIES`（默认 3 次），应对 GitHub 临时不可用 |
 | 日志回传 | 可选 `LOG_PUSH_REMOTE`，执行后自动将日志推到仓库 `run-logs` 分支 |
+| 脚本输出 | 默认 `LOG_PUSH_MODE=run-output`，服务端执行 `bash run.sh` 时同步写入 `$LOG_DIR/latest_run_output.log`，不会为了查看结果重新运行脚本 |
+| 固定文件名 | 默认回传到 `run-logs` 分支的 `logs/latest_run_output.log`，便于直接 `git show` 查看 |
+| 本机清理 | 控制服务器本机时间戳日志默认保留 14 天（`LOG_RETENTION_DAYS=14`），固定输出文件不清理 |
 
 脚本：
 
@@ -253,8 +256,11 @@ crontab -e
 ### 4.6 查看执行结果
 
 ```bash
-# 查看最新日志
+# 查看完整诊断日志
 tail -n 160 ~/codex_pull_logs/latest.log
+
+# 查看本次 run.sh 的原始输出（固定文件名，不会重新执行 run.sh）
+cat ~/codex_pull_logs/latest_run_output.log
 
 # 查看历史运行
 ls -lh ~/codex_pull_logs | tail
@@ -291,8 +297,8 @@ LOG_PUSH_REMOTE=log-repo nohup bash scripts/server_pull_run.sh > ~/codex_pull_lo
 # 拉取 run-logs 分支
 git fetch origin run-logs
 
-# 查看最新日志
-git show origin/run-logs:logs/run_*.log | tail -n 80
+# 查看服务端真实执行 run.sh 时捕获的最新输出（固定文件名）
+git show origin/run-logs:logs/latest_run_output.log
 ```
 
 日志回传安全性：
