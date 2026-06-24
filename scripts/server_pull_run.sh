@@ -138,6 +138,7 @@ cleanup_local_logs() {
 
 prepare_run_artifact_dir() {
   run_ts="$1"
+  export RUN_ARTIFACT_DIR
   export RUN_ARTIFACT_TIME="$(date '+%Y-%m-%d %H:%M:%S %z')"
 
   if [ -e "$RUN_ARTIFACT_DIR" ] || [ -L "$RUN_ARTIFACT_DIR" ]; then
