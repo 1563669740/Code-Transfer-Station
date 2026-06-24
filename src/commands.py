@@ -22,7 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
     hello_parser = subparsers.add_parser("hello", help="Run the current hello demo")
     hello_parser.set_defaults(handler=_run_hello)
 
-    crypto_parser = subparsers.add_parser("crypto", help="Run MD5 + SHA1 demo on a123456")
+    crypto_parser = subparsers.add_parser("crypto", help="Run md5(sha1(...)) demo on a123456")
     crypto_parser.set_defaults(handler=_run_crypto)
 
     parser.set_defaults(handler=_run_crypto)
