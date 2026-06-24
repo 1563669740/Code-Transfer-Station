@@ -2,10 +2,16 @@ import argparse
 from collections.abc import Sequence
 
 from src.test import hello
+from src.crypto_demo import crypto_result
 
 
 def _run_hello(_args: argparse.Namespace) -> int:
     print(hello())
+    return 0
+
+
+def _run_crypto(_args: argparse.Namespace) -> int:
+    print(crypto_result())
     return 0
 
 
@@ -15,6 +21,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     hello_parser = subparsers.add_parser("hello", help="Run the current hello demo")
     hello_parser.set_defaults(handler=_run_hello)
+
+    crypto_parser = subparsers.add_parser("crypto", help="Run MD5 + SHA1 demo on a123456")
+    crypto_parser.set_defaults(handler=_run_crypto)
 
     parser.set_defaults(handler=_run_hello)
     return parser
