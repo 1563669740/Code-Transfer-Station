@@ -138,9 +138,11 @@ ensure_base_tools() {
   have python3 || missing="$missing python3"
 
   # pip/venv are separate packages on many Debian/Ubuntu images.
+  # --help is not enough: venv can print help but still fail at runtime
+  # because ensurepip is missing.  Test the actual ensurepip import.
   if have python3; then
     python3 -m pip --version >/dev/null 2>&1 || missing="$missing python3-pip"
-    python3 -m venv --help >/dev/null 2>&1 || missing="$missing python3-venv"
+    python3 -c "import ensurepip" 2>/dev/null || missing="$missing python3-venv"
   else
     missing="$missing python3-pip python3-venv"
   fi
