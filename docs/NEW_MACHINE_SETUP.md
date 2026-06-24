@@ -164,6 +164,31 @@ bash /tmp/bootstrap_new_machine.sh \
   --project-dir "$HOME/codex_projects/project"
 ```
 
+
+## 依赖安装卡住怎么办
+
+服务器安装 Python 依赖时会调用 `scripts/install_python_deps.sh`，默认不会无限等待：
+
+- 单个镜像源最多等待 300 秒
+- pip 单次网络请求最多等待 30 秒
+- 默认依次尝试清华源、阿里云源、官方 PyPI
+
+如果你的服务器访问某个源更快，可以在执行 bootstrap 前指定：
+
+```bash
+PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple \
+PIP_INSTALL_TIMEOUT=180 \
+PIP_NETWORK_TIMEOUT=20 \
+bash /tmp/bootstrap_new_machine.sh --repo 1563669740/Code-Transfer-Station
+```
+
+已经配置好的控制机器也可以用同样环境变量启动轮询脚本：
+
+```bash
+PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple \
+nohup bash scripts/server_pull_run.sh > ~/codex_pull_logs/daemon.out 2>&1 &
+```
+
 ## 配置完成后怎么确认
 
 ```bash

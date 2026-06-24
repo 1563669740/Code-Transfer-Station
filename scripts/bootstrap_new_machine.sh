@@ -43,7 +43,8 @@ Options:
 
 Environment overrides:
   REPO_SLUG, BRANCH, PROJECT_DIR, SSH_ALIAS, DEPLOY_KEY_PATH, LOG_DIR,
-  STATE_DIR, RUN_TIMEOUT, INTERVAL_SECONDS, START_DAEMON, INSTALL_DEPS
+  STATE_DIR, RUN_TIMEOUT, INTERVAL_SECONDS, START_DAEMON, INSTALL_DEPS,
+  PIP_INDEX_URL, PIP_INDEX_URLS, PIP_INSTALL_TIMEOUT, PIP_NETWORK_TIMEOUT, PIP_RETRIES
 EOF
 }
 
@@ -261,9 +262,7 @@ prepare_project_python() {
 
   # shellcheck disable=SC1091
   . .venv/bin/activate
-  log "Installing Python dependencies from requirements.txt"
-  # Use --timeout + --retries for slow/unreliable networks (pip upgrade is not essential)
-  python -m pip install --timeout 120 --retries 3 -r requirements.txt
+  bash scripts/install_python_deps.sh requirements.txt
 }
 
 verify_project() {

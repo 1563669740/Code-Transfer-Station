@@ -18,6 +18,8 @@ set -euo pipefail
 #   FETCH_RETRY_DELAY  git fetch 重试间隔（秒），默认 10
 #   LOG_PUSH_REMOTE    日志回传远端（Git remote 名或 URL），不设置则不回传
 #   LOG_PUSH_BRANCH    日志回传分支，默认 run-logs
+#   PIP_INDEX_URL      Python 依赖安装镜像源，默认使用国内镜像并回退到官方源
+#   PIP_INSTALL_TIMEOUT  pip 安装单个源的整体超时秒数，默认 300
 #
 # 行为：
 #   1. git fetch 检查远端是否有新 commit（失败自动重试）
@@ -90,8 +92,7 @@ prepare_python_env() {
     activate_python_env
   fi
 
-  echo "[INFO] installing dependencies: requirements.txt"
-  python -m pip install -r requirements.txt
+  bash scripts/install_python_deps.sh requirements.txt
 }
 
 while true; do
