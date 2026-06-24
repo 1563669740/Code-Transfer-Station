@@ -47,6 +47,7 @@ LOG_PUSH_REMOTE="${LOG_PUSH_REMOTE:-}"
 LOG_PUSH_BRANCH="${LOG_PUSH_BRANCH:-run-logs}"
 LOG_PUSH_MODE="${LOG_PUSH_MODE:-run-output}"
 RUN_OUTPUT_LOG="${RUN_OUTPUT_LOG:-$LOG_DIR/latest_run_output.log}"
+STATUS_FILE="${STATUS_FILE:-$LOG_DIR/current_status.txt}"
 ARTIFACT_ROOT="${ARTIFACT_ROOT:-$LOG_DIR/artifacts}"
 RUN_ARTIFACT_DIR="${RUN_ARTIFACT_DIR:-$ARTIFACT_ROOT/latest}"
 ARTIFACT_ARCHIVE_DIR="${ARTIFACT_ARCHIVE_DIR:-$ARTIFACT_ROOT/archive}"
@@ -73,6 +74,26 @@ echo "[INFO] run_timeout=${RUN_TIMEOUT}s fetch_retries=$FETCH_RETRIES"
 echo "[INFO] log_push_remote=${LOG_PUSH_REMOTE:-disabled}"
 echo "[INFO] artifact_root=$ARTIFACT_ROOT"
 echo "[INFO] pid=$$"
+
+write_status() {
+  stage="$1"
+  shift || true
+  message="$*"
+  status_time="$(date '+%Y-%m-%d %H:%M:%S %z')"
+  current_commit="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  {
+    echo "time=$status_time"
+    echo "stage=$stage"
+    echo "commit=$current_commit"
+    echo "message=$message"
+    echo "latest_log=$LOG_DIR/latest.log"
+    echo "run_output=$RUN_OUTPUT_LOG"
+    echo "artifact_dir=$RUN_ARTIFACT_DIR"
+  } > "$STATUS_FILE"
+  echo "[STATUS] $stage - $message"
+}
+
+write_status "started" "daemon pid=$$ project=$PROJECT_DIR branch=$BRANCH"
 
 if ! command -v timeout >/dev/null 2>&1; then
   echo "[WARN] 'timeout' command not found; run.sh / pytest will have no execution time limit" >&2
@@ -145,6 +166,7 @@ append_artifact_summary() {
   } | tee -a "$RUN_OUTPUT_LOG"
 }
 run_project_entry() {
+  write_status "running" "bash run.sh"
   echo "[INFO] running project entry: bash run.sh"
   echo "[INFO] run_artifact_dir=$RUN_ARTIFACT_DIR"
   echo "[INFO] run_artifact_time=$RUN_ARTIFACT_TIME"
@@ -163,8 +185,10 @@ run_project_entry() {
   if [ "$rc" -eq 0 ]; then
     return 0
   elif [ "$rc" -eq 137 ]; then
+    write_status "failed" "bash run.sh timed out after ${RUN_TIMEOUT}s"
     echo "[ERROR] bash run.sh timed out after ${RUN_TIMEOUT}s (killed)"
   else
+    write_status "failed" "bash run.sh failed with exit code $rc"
     echo "[ERROR] bash run.sh failed with exit code $rc"
   fi
   exit 1
@@ -175,8 +199,11 @@ while true; do
   log="$LOG_DIR/${ts}.log"
   executed_marker="$LOG_DIR/${ts}.executed"
   rm -f "$executed_marker"
+  ln -sfn "$log" "$LOG_DIR/latest.log"
 
   (
+    trap 'rc=$?; if [ "$rc" -ne 0 ]; then write_status "failed" "script failed with exit code $rc; see $LOG_DIR/latest.log"; fi' EXIT
+    write_status "fetching" "checking origin/$BRANCH"
     echo "[INFO] time=$ts"
     echo "[INFO] project=$PROJECT_DIR branch=$BRANCH"
 
@@ -190,6 +217,7 @@ while true; do
       sleep "$FETCH_RETRY_DELAY"
     done
     if [ "$fetch_ok" -eq 0 ]; then
+      write_status "failed" "git fetch failed after $FETCH_RETRIES attempts"
       echo "[ERROR] git fetch failed after $FETCH_RETRIES attempts"
       exit 1
     fi
@@ -199,9 +227,11 @@ while true; do
     last_run_file="$STATE_DIR/last_run_${BRANCH}"
     last_run_sha="$(cat "$last_run_file" 2>/dev/null || true)"
 
+    write_status "comparing" "local=${local_sha:0:7} remote=${remote_sha:0:7} last_run=${last_run_sha:0:7}"
     echo "[INFO] local=$local_sha remote=$remote_sha last_run=$last_run_sha"
 
     if [ "$remote_sha" = "$last_run_sha" ]; then
+      write_status "idle" "remote commit already tested: ${remote_sha:0:7}"
       echo "[INFO] remote commit already tested; nothing to do."
       exit 0
     fi
@@ -209,14 +239,17 @@ while true; do
     touch "$executed_marker"
 
     if [ "$local_sha" != "$remote_sha" ]; then
+      write_status "pulling" "merging origin/$BRANCH ${remote_sha:0:7}"
       echo "[INFO] new commit detected; pulling with --ff-only."
       if ! git merge --ff-only "origin/$BRANCH" 2>&1; then
+        write_status "failed" "git merge --ff-only failed"
         echo "[ERROR] git merge --ff-only failed"
         echo "[HINT] Local changes may exist on server. Remove the project dir and re-clone if needed."
         exit 1
       fi
     fi
 
+    write_status "installing-deps" "preparing Python environment"
     echo "[INFO] preparing Python environment"
     prepare_python_env
 
@@ -225,13 +258,16 @@ while true; do
     run_project_entry
     append_artifact_summary
 
+    write_status "testing" "python3 -m pytest -q"
     echo "[INFO] running tests: python3 -m pytest -q"
     if [ "$HAS_TIMEOUT" -eq 1 ] && [ "$RUN_TIMEOUT" -gt 0 ]; then
       timeout --signal=KILL "${RUN_TIMEOUT}s" python3 -m pytest -q || {
         rc=$?
         if [ "$rc" -eq 137 ]; then
+          write_status "failed" "pytest timed out after ${RUN_TIMEOUT}s"
           echo "[ERROR] pytest timed out after ${RUN_TIMEOUT}s (killed)"
         else
+          write_status "failed" "pytest failed with exit code $rc"
           echo "[ERROR] pytest failed with exit code $rc"
         fi
         exit 1
@@ -241,6 +277,7 @@ while true; do
     fi
 
     git rev-parse HEAD > "$last_run_file"
+    write_status "success" "commit=$(git rev-parse --short HEAD)"
     echo "[INFO] success commit=$(git rev-parse HEAD)"
 
   ) 2>&1 | tee "$log" || true

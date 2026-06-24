@@ -256,6 +256,14 @@ crontab -e
 ### 4.6 查看执行结果
 
 ```bash
+# 一屏查看当前状态、daemon 是否在跑、最近日志和最新产物
+cd ~/codex_projects/project
+bash scripts/server_status.sh
+
+# 实时跟随当前运行过程（推荐排查失败时使用）
+cd ~/codex_projects/project
+bash scripts/server_status.sh --follow
+
 # 查看完整诊断日志
 tail -n 160 ~/codex_pull_logs/latest.log
 
