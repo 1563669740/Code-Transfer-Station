@@ -29,7 +29,7 @@ Windows / Codex                          控制服务器
 ```
 
 控制服务器上的部署脚本：
-- `scripts/server_pull_run.sh` — 常驻守护进程，每 60 秒轮询，带超时保护
+- `scripts/server_pull_run.sh` — 常驻守护进程，每 10 秒轮询，带超时保护
 - `scripts/server_pull_once.sh` — 单次执行版，配合 cron 使用，带超时保护
 - `scripts/server_push_log.sh` — 日志回传脚本，将执行结果推回仓库
 
@@ -61,7 +61,7 @@ requirements.txt          Python 依赖
 3. `bash run.sh` — 本地跑通
 4. `python3 -m pytest -q` — 测试通过
 5. `git add -A && git commit -m "..." && git push` — 推送到远端
-6. 控制服务器会在 60 秒内自动拉取并执行，结果写入 `~/codex_pull_logs/latest.log`
+6. 控制服务器会在 10 秒内自动拉取并执行，结果写入 `~/codex_pull_logs/latest.log`
 7. 如果配置了 `LOG_PUSH_REMOTE`，服务器执行日志也会自动推回仓库的 `run-logs` 分支
 
 ## 查看远程执行结果
