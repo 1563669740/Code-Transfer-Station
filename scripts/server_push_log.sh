@@ -70,6 +70,7 @@ if git remote get-url "$LOG_PUSH_REMOTE" >/dev/null 2>&1; then
     git worktree add "$TMP_WORKTREE" --detach
     cd "$TMP_WORKTREE"
     git checkout --orphan "$LOG_PUSH_BRANCH"
+    git rm -rf . >/dev/null 2>&1 || true
   fi
 
   cd "$TMP_WORKTREE"
@@ -80,16 +81,25 @@ if git remote get-url "$LOG_PUSH_REMOTE" >/dev/null 2>&1; then
 
   # 提交并推送
   git add "logs/$remote_log_name"
+  GIT_AUTHOR_NAME="codex-pull-runner" \
+  GIT_AUTHOR_EMAIL="codex-pull-runner@localhost" \
+  GIT_COMMITTER_NAME="codex-pull-runner" \
+  GIT_COMMITTER_EMAIL="codex-pull-runner@localhost" \
   git commit -m "run log $ts" || true  # 如果内容未变，跳过
 
   # 推送到远端 run-logs 分支（最多重试 3 次）
+  pushed=0
   for i in 1 2 3; do
     if git push "$LOG_PUSH_REMOTE" "HEAD:$LOG_PUSH_BRANCH" 2>/dev/null; then
       echo "[INFO] log pushed to $LOG_PUSH_REMOTE/$LOG_PUSH_BRANCH: $remote_log_name"
+      pushed=1
       break
     fi
     sleep $((i * 2))
   done
+  if [ "$pushed" -ne 1 ]; then
+    echo "[WARN] failed to push log to $LOG_PUSH_REMOTE/$LOG_PUSH_BRANCH after 3 attempts" >&2
+  fi
 
   # 清理 worktree
   cd "$PROJECT_DIR"
@@ -102,22 +112,37 @@ else
   trap "rm -rf '$TMP_DIR'" EXIT
 
   pushd "$TMP_DIR" >/dev/null
-  git clone --depth 1 "$LOG_PUSH_REMOTE" . 2>/dev/null || git init
-  git checkout -B "$LOG_PUSH_BRANCH" 2>/dev/null || git checkout --orphan "$LOG_PUSH_BRANCH"
+  git init >/dev/null
+  if git ls-remote --exit-code --heads "$LOG_PUSH_REMOTE" "$LOG_PUSH_BRANCH" >/dev/null 2>&1; then
+    git fetch --depth 1 "$LOG_PUSH_REMOTE" "$LOG_PUSH_BRANCH" >/dev/null
+    git checkout -B "$LOG_PUSH_BRANCH" FETCH_HEAD
+  else
+    git checkout --orphan "$LOG_PUSH_BRANCH"
+    git rm -rf . >/dev/null 2>&1 || true
+  fi
 
   mkdir -p logs
   cp "$LOG_FILE" "logs/$remote_log_name"
 
   git add "logs/$remote_log_name"
+  GIT_AUTHOR_NAME="codex-pull-runner" \
+  GIT_AUTHOR_EMAIL="codex-pull-runner@localhost" \
+  GIT_COMMITTER_NAME="codex-pull-runner" \
+  GIT_COMMITTER_EMAIL="codex-pull-runner@localhost" \
   git commit -m "run log $ts" || true
 
+  pushed=0
   for i in 1 2 3; do
     if git push "$LOG_PUSH_REMOTE" "HEAD:$LOG_PUSH_BRANCH" 2>/dev/null; then
-      echo "[INFO] log pushed to LOG_PUSH_REMOTE/$LOG_PUSH_BRANCH: $remote_log_name"
+      echo "[INFO] log pushed to $LOG_PUSH_REMOTE/$LOG_PUSH_BRANCH: $remote_log_name"
+      pushed=1
       break
     fi
     sleep $((i * 2))
   done
+  if [ "$pushed" -ne 1 ]; then
+    echo "[WARN] failed to push log to $LOG_PUSH_REMOTE/$LOG_PUSH_BRANCH after 3 attempts" >&2
+  fi
 
   popd >/dev/null
   rm -rf "$TMP_DIR"

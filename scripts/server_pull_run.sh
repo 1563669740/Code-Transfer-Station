@@ -97,6 +97,8 @@ prepare_python_env() {
 while true; do
   ts="$(date +%Y%m%d_%H%M%S)"
   log="$LOG_DIR/${ts}.log"
+  executed_marker="$LOG_DIR/${ts}.executed"
+  rm -f "$executed_marker"
 
   # 每次轮询写入独立的日志文件
   # 使用 ( ) 子 shell 控制错误范围，确保单次失败不影响守护进程继续运行
@@ -132,6 +134,9 @@ while true; do
       echo "[INFO] remote commit already tested; nothing to do."
       exit 0
     fi
+
+    # Mark this poll as a real execution attempt so idle polls do not push logs.
+    touch "$executed_marker"
 
     # ── 4. 如果本地落后于远端，快进合并 ────────────────────
     if [ "$local_sha" != "$remote_sha" ]; then
@@ -190,14 +195,16 @@ while true; do
   ln -sfn "$log" "$LOG_DIR/latest.log"
 
   # ── 8. 可选：推送日志到远端 ──────────────────────────────
-  if [ -n "$LOG_PUSH_REMOTE" ]; then
+  if [ -f "$executed_marker" ] && [ -n "$LOG_PUSH_REMOTE" ]; then
+    echo "[INFO] pushing execution log to ${LOG_PUSH_REMOTE}/${LOG_PUSH_BRANCH}" | tee -a "$log"
     LOG_PUSH_REMOTE="$LOG_PUSH_REMOTE" \
     LOG_PUSH_BRANCH="$LOG_PUSH_BRANCH" \
     LOG_DIR="$LOG_DIR" \
     LOG_FILE="$log" \
     PROJECT_DIR="$PROJECT_DIR" \
-    bash "${PROJECT_DIR}/scripts/server_push_log.sh" 2>&1 || true
+    bash "${PROJECT_DIR}/scripts/server_push_log.sh" 2>&1 | tee -a "$log" || true
   fi
+  rm -f "$executed_marker"
 
   sleep "$INTERVAL_SECONDS"
 done
