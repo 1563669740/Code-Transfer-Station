@@ -9,4 +9,12 @@ elif [ -f ".venv/Scripts/activate" ]; then
   source ".venv/Scripts/activate"
 fi
 
-python3 main.py "$@"
+# 优先使用 python，其次 python3
+if command -v python >/dev/null 2>&1; then
+  python main.py "$@"
+elif command -v python3 >/dev/null 2>&1; then
+  python3 main.py "$@"
+else
+  echo "[ERROR] Python not found" >&2
+  exit 1
+fi

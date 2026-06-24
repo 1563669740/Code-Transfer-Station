@@ -1,5 +1,8 @@
+from src.test import hello
+
+
 def main():
-    print("Project skeleton is ready.")
+    print(hello())
 
 
 if __name__ == "__main__":

@@ -1,2 +1,5 @@
-def test_smoke():
-    assert 1 + 1 == 2
+from src.test import hello
+
+
+def test_hello():
+    assert hello() == "hello world"
