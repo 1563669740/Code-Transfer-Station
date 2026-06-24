@@ -8,6 +8,7 @@ SERVER_SCRIPTS = (
 )
 STATUS_SCRIPT = ROOT / "scripts" / "server_status.sh"
 OPEN_TERMINAL_SCRIPT = ROOT / "scripts" / "open_run_terminal.sh"
+TIME_SCRIPT = ROOT / "scripts" / "server_time.sh"
 
 
 def test_server_scripts_export_fixed_run_artifact_dir():
@@ -24,6 +25,8 @@ def test_server_scripts_publish_realtime_status():
     for script in SERVER_SCRIPTS:
         text = script.read_text(encoding="utf-8")
         assert 'STATUS_FILE="${STATUS_FILE:-$LOG_DIR/current_status.txt}"' in text
+        assert 'SERVER_TIMEZONE="${SERVER_TIMEZONE:-Asia/Shanghai}"' in text
+        assert ". scripts/server_time.sh" in text
         assert 'write_status "fetching" "checking origin/$BRANCH"' in text
         assert 'write_status "running" "bash run.sh"' in text
         assert 'POPUP_TERMINAL_ON_RUN="${POPUP_TERMINAL_ON_RUN:-1}"' in text
@@ -49,3 +52,16 @@ def test_open_run_terminal_helper_launches_terminal_viewer():
     assert 'x-terminal-emulator' in text
     assert 'gnome-terminal' in text
     assert 'No supported terminal emulator found' in text
+
+def test_server_time_defaults_to_beijing_timezone():
+    text = TIME_SCRIPT.read_text(encoding="utf-8")
+    assert 'SERVER_TIMEZONE="${SERVER_TIMEZONE:-Asia/Shanghai}"' in text
+    assert 'export TZ="$SERVER_TIMEZONE"' in text
+    assert "server_timestamp()" in text
+    assert "server_log_stamp()" in text
+
+
+def test_server_status_uses_beijing_timezone_for_artifact_times():
+    text = STATUS_SCRIPT.read_text(encoding="utf-8")
+    assert 'SERVER_TIMEZONE="${SERVER_TIMEZONE:-Asia/Shanghai}"' in text
+    assert 'export TZ="$SERVER_TIMEZONE"' in text

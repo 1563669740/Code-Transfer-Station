@@ -266,6 +266,15 @@ POPUP_TERMINAL_ON_RUN=0 nohup bash scripts/server_pull_run.sh > ~/codex_pull_log
 ```
 
 该功能要求服务器当前会话有图形桌面环境（例如 VNC 中的 Ubuntu 桌面）和可用终端程序。没有 `DISPLAY` / `WAYLAND_DISPLAY` 或找不到终端程序时，脚本只输出警告并继续执行，不会影响自动运行。
+### 4.5.2 日志时间
+
+控制服务器日志、状态文件、产物摘要和日志文件名默认使用北京时间：
+
+```bash
+SERVER_TIMEZONE=Asia/Shanghai
+```
+
+如需改成其他时区，可在启动 `server_pull_run.sh` 或 `server_pull_once.sh` 前覆盖 `SERVER_TIMEZONE`，例如 `SERVER_TIMEZONE=UTC`。
 ### 4.6 查看执行结果
 
 ```bash

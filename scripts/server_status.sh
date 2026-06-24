@@ -6,6 +6,8 @@ STATUS_FILE="${STATUS_FILE:-$LOG_DIR/current_status.txt}"
 RUN_OUTPUT_LOG="${RUN_OUTPUT_LOG:-$LOG_DIR/latest_run_output.log}"
 ARTIFACT_ROOT="${ARTIFACT_ROOT:-$LOG_DIR/artifacts}"
 TAIL_LINES="${TAIL_LINES:-80}"
+SERVER_TIMEZONE="${SERVER_TIMEZONE:-Asia/Shanghai}"
+export TZ="$SERVER_TIMEZONE"
 FOLLOW=0
 
 case "${1:-}" in

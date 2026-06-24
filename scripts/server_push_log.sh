@@ -49,7 +49,10 @@ fi
 
 cd "$PROJECT_DIR"
 
-ts="$(date +%Y%m%d_%H%M%S)"
+SERVER_TIMEZONE="${SERVER_TIMEZONE:-Asia/Shanghai}"
+# shellcheck disable=SC1091
+. "${PROJECT_DIR:-.}/scripts/server_time.sh"
+ts="$(server_log_stamp)"
 remote_log_name="${LOG_REMOTE_NAME:-run_${ts}.log}"
 
 # ── 方式 A：推送到同一仓库的分支 ──────────────────────────

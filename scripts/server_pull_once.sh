@@ -49,6 +49,7 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${VENV_DIR:-.venv}"
 INSTALL_DEPS="${INSTALL_DEPS:-1}"
 POPUP_TERMINAL_ON_RUN="${POPUP_TERMINAL_ON_RUN:-1}"
+SERVER_TIMEZONE="${SERVER_TIMEZONE:-Asia/Shanghai}"
 
 mkdir -p "$LOG_DIR" "$STATE_DIR" "$ARTIFACT_ROOT" "$ARTIFACT_ARCHIVE_DIR"
 
@@ -61,11 +62,14 @@ fi
 
 cd "$PROJECT_DIR"
 
+# shellcheck disable=SC1091
+. scripts/server_time.sh
+
 write_status() {
   stage="$1"
   shift || true
   message="$*"
-  status_time="$(date '+%Y-%m-%d %H:%M:%S %z')"
+  status_time="$(server_timestamp)"
   current_commit="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
   {
     echo "time=$status_time"
@@ -144,7 +148,7 @@ cleanup_local_logs() {
 prepare_run_artifact_dir() {
   run_ts="$1"
   export RUN_ARTIFACT_DIR
-  export RUN_ARTIFACT_TIME="$(date '+%Y-%m-%d %H:%M:%S %z')"
+  export RUN_ARTIFACT_TIME="$(server_timestamp)"
 
   if [ -e "$RUN_ARTIFACT_DIR" ] || [ -L "$RUN_ARTIFACT_DIR" ]; then
     archive_path="$ARTIFACT_ARCHIVE_DIR/${run_ts}_$(git rev-parse --short HEAD)"
@@ -159,7 +163,7 @@ append_artifact_summary() {
   {
     echo ""
     echo "[INFO] artifact_dir=$RUN_ARTIFACT_DIR"
-    echo "[INFO] artifact_summary_time=$(date '+%Y-%m-%d %H:%M:%S %z')"
+    echo "[INFO] artifact_summary_time=$(server_timestamp)"
 
     artifact_count="$(find "$RUN_ARTIFACT_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')"
     if [ "${artifact_count:-0}" -eq 0 ] 2>/dev/null; then
@@ -200,7 +204,7 @@ run_project_entry() {
   exit 1
 }
 
-ts="$(date +%Y%m%d_%H%M%S)"
+ts="$(server_log_stamp)"
 log="$LOG_DIR/${ts}.log"
 executed_marker="$LOG_DIR/${ts}.executed"
 rm -f "$executed_marker"
