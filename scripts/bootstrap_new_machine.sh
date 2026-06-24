@@ -262,8 +262,8 @@ prepare_project_python() {
   # shellcheck disable=SC1091
   . .venv/bin/activate
   log "Installing Python dependencies from requirements.txt"
-  python -m pip install --upgrade pip
-  python -m pip install -r requirements.txt
+  # Use --timeout + --retries for slow/unreliable networks (pip upgrade is not essential)
+  python -m pip install --timeout 120 --retries 3 -r requirements.txt
 }
 
 verify_project() {
