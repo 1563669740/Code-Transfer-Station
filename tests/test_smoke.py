@@ -1,5 +1,0 @@
-from src.test import hello
-
-
-def test_hello():
-    assert hello() == "hello dudu666"

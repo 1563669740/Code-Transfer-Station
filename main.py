@@ -1,4 +1,4 @@
-from src.commands import main
+from src.rq4_plots import main
 
 
 if __name__ == "__main__":

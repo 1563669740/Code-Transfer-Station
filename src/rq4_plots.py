@@ -477,4 +477,9 @@ def generate_rq4_plots(output_dir: Path | None = None) -> list[Path]:
     plot_combined(output_paths[3])
     return output_paths
 
-
+def main() -> int:
+    output_paths = generate_rq4_plots()
+    print("Generated RQ4 plots:")
+    for path in output_paths:
+        print(path)
+    return 0
