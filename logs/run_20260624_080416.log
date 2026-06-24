@@ -1,0 +1,18 @@
+[INFO] time=20260624_080411
+[INFO] project=/home/batchcom/codex_projects/project branch=main
+来自 github-codex-pull:1563669740/Code-Transfer-Station
+ * branch            main       -> FETCH_HEAD
+[INFO] local=ffdacd407842323e124f14b923f176658141ce0f remote=43cb740c4a1b3b5b6207eebd8ffc621241f8f4d6 last_run=ffdacd407842323e124f14b923f176658141ce0f
+[INFO] new commit detected; pulling with --ff-only.
+error: 您对下列文件的本地修改将被合并操作覆盖：
+	scripts/server_pull_once.sh
+	scripts/server_pull_run.sh
+	scripts/server_push_log.sh
+请在合并前提交或贮藏您的修改。
+正在终止
+更新 ffdacd4..43cb740
+[ERROR] git merge --ff-only failed
+[HINT] Local changes may exist on server. Remove the project dir and re-clone if needed.
+[INFO] pushing execution log to origin/run-logs
+准备工作区（分离头指针 de98bb5）
+HEAD 现在位于 de98bb5 run log 20260624_080258
