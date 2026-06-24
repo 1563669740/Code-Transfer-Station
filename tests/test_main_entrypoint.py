@@ -1,9 +1,11 @@
 import ast
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 from src.crypto_demo import crypto_result
+from src.rq4_plots import PLOT_FILENAMES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,9 +21,24 @@ def test_main_delegates_to_command_module():
     assert "src.sha1_algo" not in ast.dump(tree)
 
 
-def test_main_default_runs_current_command():
+def test_main_default_generates_rq4_plots(tmp_path):
     result = subprocess.run(
         [sys.executable, str(ROOT / "main.py")],
+        check=True,
+        capture_output=True,
+        env={**os.environ, "RUN_ARTIFACT_DIR": str(tmp_path)},
+        text=True,
+    )
+    assert "Generated RQ4 plots:" in result.stdout
+    for filename in PLOT_FILENAMES:
+        path = tmp_path / filename
+        assert path.is_file()
+        assert path.stat().st_size > 0
+
+
+def test_main_crypto_command_still_available():
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "main.py"), "crypto"],
         check=True,
         capture_output=True,
         text=True,
