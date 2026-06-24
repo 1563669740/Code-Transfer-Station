@@ -52,17 +52,23 @@ Codex 必须遵守以下原则：
 ```text
 project/
   main.py
+  run.sh
+  Makefile
+  requirements.txt
   src/
   tests/
   scripts/
-    server_pull_run.sh      控制服务器常驻轮询守护进程
-    server_pull_once.sh     控制服务器 cron 单次轮询
-    server_push_log.sh      控制服务器日志回传（可选）
-  RUNBOOK.md
+    bootstrap_new_machine.sh  新机器一键配置脚本
+    server_pull_run.sh        控制服务器常驻轮询守护进程
+    server_pull_once.sh       控制服务器 cron 单次轮询
+    server_push_log.sh        控制服务器日志回传（可选）
+  docs/
+    CLAUDE.md / AGENTS.md / RUNBOOK.md  项目执行规则
+    NEW_MACHINE_SETUP.md                 新机器环境配置指南
+    *.docx                               部署流程记录等
+  tools/
+    generate_docx.py          生成 docx 文档
   .gitignore
-  requirements.txt
-  run.sh
-  Makefile
 ```
 
 各文件职责如下：
@@ -73,11 +79,14 @@ src/                         业务代码目录
 tests/                       测试代码目录
 run.sh                       本地统一启动脚本
 Makefile                     统一 run/test/pull-daemon/pull-once 命令
-scripts/server_pull_run.sh   控制服务器轮询守护进程（带超时/重试/日志回传）
-scripts/server_pull_once.sh  控制服务器 cron 单次轮询（带超时/重试/日志回传）
-scripts/server_push_log.sh   控制服务器日志回传脚本（可选组件）
+scripts/bootstrap_new_machine.sh   新机器一键配置脚本
+scripts/server_pull_run.sh         控制服务器轮询守护进程（带超时/重试/日志回传）
+scripts/server_pull_once.sh        控制服务器 cron 单次轮询（带超时/重试/日志回传）
+scripts/server_push_log.sh         控制服务器日志回传脚本（可选组件）
+docs/                         项目文档（规则/指南/流程记录）
+tools/                        辅助工具脚本
 requirements.txt             Python 依赖列表
-RUNBOOK.md                   Codex 执行规则
+RUNBOOK.md                   Codex 执行规则（本文件）
 ```
 
 ------
