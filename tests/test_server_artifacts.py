@@ -9,6 +9,7 @@ SERVER_SCRIPTS = (
 STATUS_SCRIPT = ROOT / "scripts" / "server_status.sh"
 OPEN_TERMINAL_SCRIPT = ROOT / "scripts" / "open_run_terminal.sh"
 TIME_SCRIPT = ROOT / "scripts" / "server_time.sh"
+SYNC_SCRIPT = ROOT / "scripts" / "server_sync_latest.sh"
 
 
 def test_server_scripts_export_fixed_run_artifact_dir():
@@ -65,3 +66,14 @@ def test_server_status_uses_beijing_timezone_for_artifact_times():
     text = STATUS_SCRIPT.read_text(encoding="utf-8")
     assert 'SERVER_TIMEZONE="${SERVER_TIMEZONE:-Asia/Shanghai}"' in text
     assert 'export TZ="$SERVER_TIMEZONE"' in text
+
+def test_server_sync_latest_wraps_manual_update_flow():
+    text = SYNC_SCRIPT.read_text(encoding="utf-8")
+    assert 'kill "$pid"' in text
+    assert 'git fetch origin "$BRANCH"' in text
+    assert 'git merge --ff-only "origin/$BRANCH"' in text
+    assert 'rm -f "$STATE_DIR/last_run_${BRANCH}"' in text
+    assert 'bash scripts/server_pull_once.sh' in text
+    assert 'nohup bash scripts/server_pull_run.sh' in text
+    assert 'FORCE_AUTOMATION_SCRIPTS="${FORCE_AUTOMATION_SCRIPTS:-1}"' in text
+    assert 'Local non-automation changes exist' in text

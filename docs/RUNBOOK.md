@@ -275,6 +275,29 @@ SERVER_TIMEZONE=Asia/Shanghai
 ```
 
 如需改成其他时区，可在启动 `server_pull_run.sh` 或 `server_pull_once.sh` 前覆盖 `SERVER_TIMEZONE`，例如 `SERVER_TIMEZONE=UTC`。
+### 4.5.3 一键同步并执行最新代码
+
+如果需要在控制服务器上手动同步远端最新代码、强制执行一次、并重启后台 daemon，使用：
+
+```bash
+cd ~/codex_projects/project
+bash scripts/server_sync_latest.sh
+```
+
+该脚本会自动完成：停止旧 daemon、拉取 `origin/main`、快进合并、强制运行一次最新 commit、重新启动 daemon、打印当前状态。它默认只会覆盖仓库管理的自动化脚本本地改动；如果发现业务代码存在本地未提交修改，会停止并报错，避免覆盖业务代码。
+
+可选参数：
+
+```bash
+# 不覆盖本地自动化脚本改动
+bash scripts/server_sync_latest.sh --no-force-scripts
+
+# 只同步代码，不立即执行
+bash scripts/server_sync_latest.sh --no-run-once
+
+# 同步并执行，但不重启后台 daemon
+bash scripts/server_sync_latest.sh --no-restart-daemon
+```
 ### 4.6 查看执行结果
 
 ```bash
