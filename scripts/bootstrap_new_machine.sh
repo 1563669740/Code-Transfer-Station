@@ -249,6 +249,11 @@ prepare_project_python() {
     return 0
   fi
 
+  if [ -d .venv ] && [ ! -f .venv/bin/activate ]; then
+    warn ".venv exists but is incomplete (missing activate); removing and re-creating"
+    rm -rf .venv
+  fi
+
   if [ ! -d .venv ]; then
     log "Creating project virtual environment: .venv"
     python3 -m venv .venv
