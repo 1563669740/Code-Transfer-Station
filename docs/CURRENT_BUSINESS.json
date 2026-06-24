@@ -1,0 +1,22 @@
+{
+  "description": "Current core business code. When Codex generates a new core business implementation, update this file, point main.py to the new entrypoint, and delete obsolete business files/tests in the same change.",
+  "entrypoint": {
+    "module": "src.rq4_plots",
+    "function": "main"
+  },
+  "src_files": [
+    "src/artifacts.py",
+    "src/rq4_plots.py"
+  ],
+  "test_files": [
+    "tests/test_artifacts.py",
+    "tests/test_current_business_manifest.py",
+    "tests/test_main_entrypoint.py",
+    "tests/test_server_artifacts.py"
+  ],
+  "infrastructure_prefixes": [
+    "scripts/",
+    "docs/",
+    "tools/"
+  ]
+}
