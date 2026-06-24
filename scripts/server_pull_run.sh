@@ -55,6 +55,7 @@ LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-14}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${VENV_DIR:-.venv}"
 INSTALL_DEPS="${INSTALL_DEPS:-1}"
+POPUP_TERMINAL_ON_RUN="${POPUP_TERMINAL_ON_RUN:-1}"
 
 mkdir -p "$LOG_DIR" "$STATE_DIR" "$ARTIFACT_ROOT" "$ARTIFACT_ARCHIVE_DIR"
 
@@ -126,6 +127,26 @@ prepare_python_env() {
   fi
 
   bash scripts/install_python_deps.sh requirements.txt
+}
+
+open_live_terminal() {
+  if [ "$POPUP_TERMINAL_ON_RUN" != "1" ]; then
+    echo "[INFO] live terminal popup disabled: POPUP_TERMINAL_ON_RUN=$POPUP_TERMINAL_ON_RUN"
+    return 0
+  fi
+
+  if [ ! -f scripts/open_run_terminal.sh ]; then
+    echo "[WARN] live terminal helper not found: scripts/open_run_terminal.sh"
+    return 0
+  fi
+
+  TERMINAL_TITLE="Codex run $(git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
+  LOG_DIR="$LOG_DIR" \
+  STATUS_FILE="$STATUS_FILE" \
+  RUN_OUTPUT_LOG="$RUN_OUTPUT_LOG" \
+  LATEST_LOG="$LOG_DIR/latest.log" \
+  RUN_ARTIFACT_DIR="$RUN_ARTIFACT_DIR" \
+  bash scripts/open_run_terminal.sh || true
 }
 
 cleanup_local_logs() {
@@ -249,6 +270,8 @@ while true; do
         exit 1
       fi
     fi
+
+    open_live_terminal
 
     write_status "installing-deps" "preparing Python environment"
     echo "[INFO] preparing Python environment"

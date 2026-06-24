@@ -253,6 +253,19 @@ crontab -e
 * * * * * flock -n /tmp/codex_pull.lock bash $HOME/codex_projects/project/scripts/server_pull_once.sh
 ```
 
+### 4.5.1 自动弹出运行窗口
+
+控制服务器检测到新 commit 并准备执行时，默认会尝试打开一个桌面 Terminal 窗口，实时跟随本次 `latest.log` 和 `latest_run_output.log`。这样 `bash run.sh` 或测试失败时，错误会直接留在窗口里，便于在 VNC 桌面上查看。
+
+```bash
+# 默认开启
+POPUP_TERMINAL_ON_RUN=1
+
+# 如果不希望弹窗，只写日志
+POPUP_TERMINAL_ON_RUN=0 nohup bash scripts/server_pull_run.sh > ~/codex_pull_logs/daemon.out 2>&1 &
+```
+
+该功能要求服务器当前会话有图形桌面环境（例如 VNC 中的 Ubuntu 桌面）和可用终端程序。没有 `DISPLAY` / `WAYLAND_DISPLAY` 或找不到终端程序时，脚本只输出警告并继续执行，不会影响自动运行。
 ### 4.6 查看执行结果
 
 ```bash

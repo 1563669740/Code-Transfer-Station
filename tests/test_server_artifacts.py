@@ -7,6 +7,7 @@ SERVER_SCRIPTS = (
     ROOT / "scripts" / "server_pull_once.sh",
 )
 STATUS_SCRIPT = ROOT / "scripts" / "server_status.sh"
+OPEN_TERMINAL_SCRIPT = ROOT / "scripts" / "open_run_terminal.sh"
 
 
 def test_server_scripts_export_fixed_run_artifact_dir():
@@ -25,6 +26,9 @@ def test_server_scripts_publish_realtime_status():
         assert 'STATUS_FILE="${STATUS_FILE:-$LOG_DIR/current_status.txt}"' in text
         assert 'write_status "fetching" "checking origin/$BRANCH"' in text
         assert 'write_status "running" "bash run.sh"' in text
+        assert 'POPUP_TERMINAL_ON_RUN="${POPUP_TERMINAL_ON_RUN:-1}"' in text
+        assert "open_live_terminal" in text
+        assert "bash scripts/open_run_terminal.sh" in text
         assert 'write_status "testing" "python3 -m pytest -q"' in text
         assert 'write_status "failed"' in text
         assert 'ln -sfn "$log" "$LOG_DIR/latest.log"' in text
@@ -36,3 +40,12 @@ def test_server_status_helper_shows_logs_and_artifacts():
     assert 'server_pull_run.sh is not running' in text
     assert 'Latest artifacts' in text
     assert 'tail -n "$TAIL_LINES" --retry -F' in text
+
+def test_open_run_terminal_helper_launches_terminal_viewer():
+    text = OPEN_TERMINAL_SCRIPT.read_text(encoding="utf-8")
+    assert 'DISPLAY' in text
+    assert 'WAYLAND_DISPLAY' in text
+    assert 'tail -n "$TAIL_LINES" --retry -F "$LATEST_LOG" "$RUN_OUTPUT_LOG"' in text
+    assert 'x-terminal-emulator' in text
+    assert 'gnome-terminal' in text
+    assert 'No supported terminal emulator found' in text
