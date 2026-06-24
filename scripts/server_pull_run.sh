@@ -182,8 +182,9 @@ while true; do
     git rev-parse HEAD > "$last_run_file"
     echo "[INFO] success commit=$(git rev-parse HEAD)"
 
-  ) > "$log" 2>&1 || true
+  ) 2>&1 | tee "$log" || true
   # 注意：上面用 ( ) 子 shell，exit 只退出子 shell，不会终止守护进程
+  # 使用 tee 将输出同时写入日志文件和终端，方便实时观看执行过程
 
   # 更新 latest 软链接
   ln -sfn "$log" "$LOG_DIR/latest.log"

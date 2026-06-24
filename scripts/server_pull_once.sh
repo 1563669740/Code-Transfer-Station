@@ -168,7 +168,7 @@ set +e
   git rev-parse HEAD > "$last_run_file"
   echo "[INFO] success commit=$(git rev-parse HEAD)"
 
-) > "$log" 2>&1
+) 2>&1 | tee "$log"
 
 exit_code=$?
 set -e
