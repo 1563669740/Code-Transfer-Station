@@ -22,6 +22,9 @@ set -euo pipefail
 #   LOG_PUSH_BRANCH    日志回传分支，默认 run-logs
 #   LOG_PUSH_MODE      run-output 只回传本次 run.sh 输出；full 回传完整诊断日志
 #   RUN_OUTPUT_LOG     固定脚本输出文件，默认 $LOG_DIR/latest_run_output.log
+#   ARTIFACT_ROOT      运行产物根目录，默认 $LOG_DIR/artifacts
+#   RUN_ARTIFACT_DIR   固定的本次产物目录，默认 $ARTIFACT_ROOT/latest
+#   ARTIFACT_ARCHIVE_DIR 旧产物归档目录，默认 $ARTIFACT_ROOT/archive
 #   LOG_RETENTION_DAYS 本机时间戳日志保留天数，默认 14；设为 0 不清理
 #   PIP_INDEX_URL      Python 依赖安装镜像源，默认使用国内镜像并回退到官方源
 #   PIP_INSTALL_TIMEOUT  pip 安装单个源的整体超时秒数，默认 300
@@ -37,12 +40,15 @@ LOG_PUSH_REMOTE="${LOG_PUSH_REMOTE:-}"
 LOG_PUSH_BRANCH="${LOG_PUSH_BRANCH:-run-logs}"
 LOG_PUSH_MODE="${LOG_PUSH_MODE:-run-output}"
 RUN_OUTPUT_LOG="${RUN_OUTPUT_LOG:-$LOG_DIR/latest_run_output.log}"
+ARTIFACT_ROOT="${ARTIFACT_ROOT:-$LOG_DIR/artifacts}"
+RUN_ARTIFACT_DIR="${RUN_ARTIFACT_DIR:-$ARTIFACT_ROOT/latest}"
+ARTIFACT_ARCHIVE_DIR="${ARTIFACT_ARCHIVE_DIR:-$ARTIFACT_ROOT/archive}"
 LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-14}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${VENV_DIR:-.venv}"
 INSTALL_DEPS="${INSTALL_DEPS:-1}"
 
-mkdir -p "$LOG_DIR" "$STATE_DIR"
+mkdir -p "$LOG_DIR" "$STATE_DIR" "$ARTIFACT_ROOT" "$ARTIFACT_ARCHIVE_DIR"
 
 if [ ! -d "$PROJECT_DIR" ]; then
   echo "[ERROR] PROJECT_DIR not found: $PROJECT_DIR" >&2
@@ -93,8 +99,39 @@ cleanup_local_logs() {
   fi
 }
 
+prepare_run_artifact_dir() {
+  run_ts="$1"
+  export RUN_ARTIFACT_TIME="$(date '+%Y-%m-%d %H:%M:%S %z')"
+
+  if [ -e "$RUN_ARTIFACT_DIR" ] || [ -L "$RUN_ARTIFACT_DIR" ]; then
+    archive_path="$ARTIFACT_ARCHIVE_DIR/${run_ts}_$(git rev-parse --short HEAD)"
+    mv "$RUN_ARTIFACT_DIR" "$archive_path"
+    echo "[INFO] previous artifacts archived: $archive_path"
+  fi
+
+  mkdir -p "$RUN_ARTIFACT_DIR"
+}
+
+append_artifact_summary() {
+  {
+    echo ""
+    echo "[INFO] artifact_dir=$RUN_ARTIFACT_DIR"
+    echo "[INFO] artifact_summary_time=$(date '+%Y-%m-%d %H:%M:%S %z')"
+
+    artifact_count="$(find "$RUN_ARTIFACT_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')"
+    if [ "${artifact_count:-0}" -eq 0 ] 2>/dev/null; then
+      echo "[INFO] artifacts: none"
+      return 0
+    fi
+
+    echo "[INFO] artifacts:"
+    find "$RUN_ARTIFACT_DIR" -type f -printf '[INFO] artifact %TY-%Tm-%Td %TH:%TM:%TS %TZ | %s bytes | %P\n' 2>/dev/null | sort
+  } | tee -a "$RUN_OUTPUT_LOG"
+}
 run_project_entry() {
   echo "[INFO] running project entry: bash run.sh"
+  echo "[INFO] run_artifact_dir=$RUN_ARTIFACT_DIR"
+  echo "[INFO] run_artifact_time=$RUN_ARTIFACT_TIME"
   : > "$RUN_OUTPUT_LOG"
 
   set +e
@@ -168,7 +205,10 @@ set +e
   echo "[INFO] preparing Python environment"
   prepare_python_env
 
+  prepare_run_artifact_dir "$ts"
+
   run_project_entry
+  append_artifact_summary
 
   echo "[INFO] running tests: python3 -m pytest -q"
   if [ "$HAS_TIMEOUT" -eq 1 ] && [ "$RUN_TIMEOUT" -gt 0 ]; then

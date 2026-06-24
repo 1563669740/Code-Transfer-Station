@@ -266,6 +266,31 @@ cat ~/codex_pull_logs/latest_run_output.log
 ls -lh ~/codex_pull_logs | tail
 ```
 
+### 4.6.1 查看运行产物
+
+如果项目运行时生成 PPT/PPTX、CSV、图片等非文本文件，业务代码应优先写入环境变量 `RUN_ARTIFACT_DIR` 指向的目录。
+控制服务器每次执行新 commit 前会固定设置：
+
+```bash
+RUN_ARTIFACT_DIR="$LOG_DIR/artifacts/latest"
+```
+
+也就是说，最新一次运行的文件始终在：
+
+```bash
+$LOG_DIR/artifacts/latest/
+```
+
+为了避免旧文件和新文件混在一起，脚本会在每次运行前把旧的 `latest/` 移动到：
+
+```bash
+$LOG_DIR/artifacts/archive/<timestamp>_<commit>/
+```
+
+`latest_run_output.log` 除了保留 `run.sh` 的文本输出，还会在末尾追加本次产物清单，包含产物目录、汇总时间、文件修改时间、文件大小和文件名，方便快速查阅。
+
+Python 代码推荐通过 `src.artifacts.get_artifact_dir()` 获取输出目录。本地运行时如果没有设置 `RUN_ARTIFACT_DIR`，默认写入项目下的 `outputs/`，该目录不纳入 Git。
+
 ### 4.7 日志回传（可选）
 
 如果希望 Codex 在开发机上也能看到控制服务器的执行结果，可以启用日志回传功能。控制服务器每次执行完成后，自动将日志推送到远端仓库的 `run-logs` 分支。
