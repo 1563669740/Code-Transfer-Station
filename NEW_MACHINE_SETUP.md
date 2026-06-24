@@ -144,7 +144,7 @@ https://github.com/1563669740/Code-Transfer-Station/settings/keys
 
 - Title: `server-deploy`
 - Key: 粘贴脚本打印的 `ssh-ed25519 ...`
-- 不勾选 `Allow write access`
+- **勾选 `Allow write access`**（日志回传需要写权限，否则服务器执行日志无法推回仓库）
 
 保存后回到终端按 Enter，脚本会继续完成克隆、验证和后台轮询。
 

@@ -292,7 +292,8 @@ start_daemon() {
     fi
   fi
 
-  log "Starting polling daemon"
+  log "Starting polling daemon with log push-back enabled"
+  LOG_PUSH_REMOTE=origin \
   PROJECT_DIR="$PROJECT_DIR" \
   BRANCH="$BRANCH" \
   LOG_DIR="$LOG_DIR" \
