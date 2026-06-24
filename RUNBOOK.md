@@ -169,13 +169,13 @@ Codex **不需要**：
 while true:
   1. git fetch origin main
   2. 比较 remote_sha vs last_run_sha
-     └─ 相同 → 已经测过，跳过 → sleep 60s
+     └─ 相同 → 已经测过，跳过 → sleep 30s
      └─ 不同 → 发现新代码！
         ├─ git merge --ff-only origin/main
         ├─ bash run.sh
         ├─ python3 -m pytest -q
         ├─ 记录已执行 commit
-        └─ 写日志 → sleep 60s
+        └─ 写日志 → sleep 30s
 ```
 
 核心脚本特性：
@@ -448,7 +448,7 @@ pip install -r requirements.txt
 6. 本地运行 bash run.sh。
 7. 本地运行 python3 -m pytest -q。
 8. 测试通过后 git add -A && git commit -m "..." && git push。
-9. 告知用户已推送，控制服务器将在 60 秒内自动拉取执行。
+9. 告知用户已推送，控制服务器将在 30 秒内自动拉取执行。
 10. 最后总结修改了哪些文件、运行了哪些命令、结果是否通过。
 ```
 

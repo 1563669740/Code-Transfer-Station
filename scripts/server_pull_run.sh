@@ -10,7 +10,7 @@ set -euo pipefail
 # 环境变量（均可选，有默认值）：
 #   PROJECT_DIR        项目目录，默认 $HOME/codex_projects/project
 #   BRANCH             要跟踪的分支，默认 main
-#   INTERVAL_SECONDS   轮询间隔（秒），默认 10
+#   INTERVAL_SECONDS   轮询间隔（秒），默认 30
 #   LOG_DIR            日志目录，默认 $HOME/codex_pull_logs
 #   STATE_DIR          状态目录（记录上次已执行的 commit），默认 $HOME/.codex_pull_state
 #   RUN_TIMEOUT        单次 run.sh 超时（秒），默认 600（10 分钟），设为 0 不限制
@@ -29,7 +29,7 @@ set -euo pipefail
 
 PROJECT_DIR="${PROJECT_DIR:-$HOME/codex_projects/project}"
 BRANCH="${BRANCH:-main}"
-INTERVAL_SECONDS="${INTERVAL_SECONDS:-10}"
+INTERVAL_SECONDS="${INTERVAL_SECONDS:-30}"
 LOG_DIR="${LOG_DIR:-$HOME/codex_pull_logs}"
 STATE_DIR="${STATE_DIR:-$HOME/.codex_pull_state}"
 RUN_TIMEOUT="${RUN_TIMEOUT:-600}"
