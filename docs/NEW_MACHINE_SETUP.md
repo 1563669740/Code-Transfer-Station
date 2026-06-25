@@ -3,7 +3,7 @@
 这份说明来自 `对话记录.docx` 里的实际配置过程。目标是把一台新的 Linux 控制机器配置成：
 
 ```text
-开发机 git push -> GitHub -> 控制机器自动 fetch/pull -> bash run.sh -> python3 -m pytest -q
+开发机/Codex 修改并 push -> GitHub -> 控制机器自动 fetch/pull -> bash run.sh -> python3 -m pytest -q
 ```
 
 ## 默认仓库和 OWNER/REPO 怎么理解
@@ -42,9 +42,9 @@ bash /tmp/bootstrap_new_machine.sh --repo YOUR_OWNER/YOUR_REPO
 
 ## 本地新电脑先配置什么
 
-本地新电脑是开发机/Codex 所在机器，负责改代码、运行测试、提交并 push。它使用开发者自己的 GitHub 账号，不使用服务器 Deploy Key。
+本地新电脑是开发机/Codex 所在机器，负责改代码、静态检查、提交并 push。Codex 不允许在本地运行项目业务代码、run.sh 或 pytest；真正的运行和测试交给控制服务器完成。它使用开发者自己的 GitHub 账号，不使用服务器 Deploy Key。
 
-1. 安装 Git。Windows 推荐 Git for Windows，并使用 Git Bash 执行 `bash run.sh`。
+1. 安装 Git。Windows 推荐 Git for Windows；Git Bash 只用于普通 Git/脚本操作，Codex 本地不要执行 `bash run.sh`。
 2. 配置提交身份：
 
    ```bash
@@ -66,12 +66,9 @@ bash /tmp/bootstrap_new_machine.sh --repo YOUR_OWNER/YOUR_REPO
    python -m pip install -r requirements.txt
    ```
 
-5. 本地验证：
+5. 本地检查：
 
-   ```bash
-   bash run.sh
-   python3 -m pytest -q
-   ```
+   Codex 本地只做不执行业务代码的检查，例如 `git status`、`git diff`、`rg` 和清单一致性检查。不要在本地执行 `bash run.sh`、`python3 -m pytest -q`、`pytest`、`make run` 或 `make test`。
 
 ## Codex 生成代码后的固定后续流程
 
@@ -79,9 +76,9 @@ bash /tmp/bootstrap_new_machine.sh --repo YOUR_OWNER/YOUR_REPO
 
 ```text
 请先阅读 docs/RUNBOOK.md，按其中规则修改代码。
-生成或修改代码后，请执行 bash run.sh 和 python3 -m pytest -q。
+生成或修改代码后，禁止在本地执行 bash run.sh、python3 -m pytest -q、pytest、make run 或 make test。
 如果涉及新的核心业务入口，请同步更新 docs/CURRENT_BUSINESS.json、main.py、src/ 和 tests/，删除旧业务残留。
-本地验证通过后再 git add -A、git commit、git push。
+只做不执行业务代码的静态检查和清单检查，然后 git add -A、git commit、git push；由控制服务器自动拉取后执行 run.sh 和 pytest。
 ```
 
 ## 最少需要什么
@@ -128,8 +125,8 @@ scripts/bootstrap_new_machine.sh
 5. 配置 SSH Host
 6. 克隆或更新仓库
 7. 创建 `.venv` 并安装 `requirements.txt`
-8. 执行 `bash run.sh`
-9. 执行 `python3 -m pytest -q`
+8. 在控制服务器上执行 `bash run.sh`
+9. 在控制服务器上执行 `python3 -m pytest -q`
 10. 启动 `scripts/server_pull_run.sh` 后台轮询
 
 ## 第一次在新机器上怎么跑
@@ -303,12 +300,51 @@ ps aux | grep server_pull_run | grep -v grep
 tail -n 160 ~/codex_pull_logs/latest.log
 ```
 
-以后只需要在开发机提交并推送：
+以后只需要在开发机/Codex 修改、做静态检查、提交并推送：
 
 ```bash
-bash run.sh
-python3 -m pytest -q
+git status
+git diff
 git add -A && git commit -m "描述修改内容" && git push
 ```
 
-控制机器会自动拉取新 commit 并执行，不需要手动 SSH 登录服务器改代码。
+控制机器会自动拉取新 commit，并在服务器上执行 `bash run.sh` 和 `python3 -m pytest -q`，不需要手动 SSH 登录服务器改代码。
+## 服务器没有自动更新怎么办
+
+如果逻辑代码已经 push，但服务器没有在预期时间内更新，先在控制服务器上查看守护进程和日志：
+
+```bash
+ps aux | grep server_pull_run | grep -v grep
+tail -n 160 ~/codex_pull_logs/latest.log
+```
+
+本项目提供了手动同步脚本。该脚本只能由用户在控制服务器上执行，Codex 不要本地执行，也不要通过 SSH 代替执行：
+
+```bash
+cd ~/codex_projects/project
+bash scripts/server_sync_latest.sh
+```
+
+常用参数：
+
+```bash
+# 不覆盖服务器本地自动化脚本改动
+bash scripts/server_sync_latest.sh --no-force-scripts
+
+# 只同步最新代码，不立即运行 run.sh/pytest
+bash scripts/server_sync_latest.sh --no-run-once
+
+# 同步并运行一次，但不重启后台 daemon
+bash scripts/server_sync_latest.sh --no-restart-daemon
+```
+
+## 代码需要项目目录外的数据怎么办
+
+如果要执行的业务代码依赖外部数据，但数据不在这个项目文件夹里，按下面原则处理：
+
+1. 不要把本机绝对路径写入代码，例如 `C:\Users\...` 或 `/Users/...`。
+2. 不要把大数据、隐私数据、密钥文件提交到仓库。
+3. 在控制服务器上准备固定数据目录，例如 `/data/code-transfer-station/input`。
+4. 用环境变量告诉程序数据位置，例如 `DATA_DIR=/data/code-transfer-station/input`；只在 `.env.example` 写变量名和示例，不写真实敏感路径。
+5. 业务代码缺少数据时应明确报错，提示需要设置哪个环境变量、期望什么目录结构。
+6. 运行产物继续写入 `RUN_ARTIFACT_DIR`，由服务器脚本统一归档到 `~/codex_pull_logs/artifacts/latest/`。
