@@ -6,6 +6,84 @@
 开发机 git push -> GitHub -> 控制机器自动 fetch/pull -> bash run.sh -> python3 -m pytest -q
 ```
 
+## 默认仓库和 OWNER/REPO 怎么理解
+
+本项目作者自己运行时，默认仓库就是：
+
+```text
+1563669740/Code-Transfer-Station
+```
+
+也就是说，作者部署默认库时可以直接执行：
+
+```bash
+bash /tmp/bootstrap_new_machine.sh
+```
+
+如果显式执行下面这条命令：
+
+```bash
+bash /tmp/bootstrap_new_machine.sh --repo 1563669740/Code-Transfer-Station
+```
+
+含义是：控制机器会同步 GitHub 上的 `1563669740/Code-Transfer-Station` 这个原始默认仓库，不会自动同步别人的 fork 或团队仓库。
+
+别人拿到这份代码后，应先 fork 或导入到自己的仓库，然后把所有示例里的 `OWNER/REPO` 改成自己的仓库，例如：
+
+```bash
+bash /tmp/bootstrap_new_machine.sh --repo YOUR_OWNER/YOUR_REPO
+```
+
+常见配置位置：
+
+- 本地开发机 push 地址默认使用 HTTPS：`git remote set-url origin https://github.com/YOUR_OWNER/YOUR_REPO.git`
+- 服务器 bootstrap 一次性参数：`--repo YOUR_OWNER/YOUR_REPO`
+- 机器本地默认值：复制 `.env.example` 为 `.env` 后修改 `REPO_SLUG=YOUR_OWNER/YOUR_REPO`
+
+## 本地新电脑先配置什么
+
+本地新电脑是开发机/Codex 所在机器，负责改代码、运行测试、提交并 push。它使用开发者自己的 GitHub 账号，不使用服务器 Deploy Key。
+
+1. 安装 Git。Windows 推荐 Git for Windows，并使用 Git Bash 执行 `bash run.sh`。
+2. 配置提交身份：
+
+   ```bash
+   git config --global user.name "你的名字或GitHub用户名"
+   git config --global user.email "你的邮箱@example.com"
+   ```
+
+3. 关联 GitHub：本项目本地开发默认使用 HTTPS remote。首次 `git push` 时使用 Git Credential Manager / 浏览器登录完成 GitHub 授权；不要把 token 拼进 remote URL。SSH 只是你自己决定改用 `git@github.com:OWNER/REPO.git` 时的可选方案。
+4. 克隆项目并安装依赖：
+
+   ```bash
+   git clone https://github.com/1563669740/Code-Transfer-Station.git
+   cd Code-Transfer-Station
+   python -m venv .venv
+   # Windows PowerShell
+   .\.venv\Scripts\activate
+   # Linux / macOS / Git Bash
+   source .venv/bin/activate
+   python -m pip install -r requirements.txt
+   ```
+
+5. 本地验证：
+
+   ```bash
+   bash run.sh
+   python3 -m pytest -q
+   ```
+
+## Codex 生成代码后的固定后续流程
+
+让 Codex 生成或修改代码时，应明确要求它先阅读 `docs/RUNBOOK.md`，并在生成后继续执行 RUNBOOK 的后续工作：
+
+```text
+请先阅读 docs/RUNBOOK.md，按其中规则修改代码。
+生成或修改代码后，请执行 bash run.sh 和 python3 -m pytest -q。
+如果涉及新的核心业务入口，请同步更新 docs/CURRENT_BUSINESS.json、main.py、src/ 和 tests/，删除旧业务残留。
+本地验证通过后再 git add -A、git commit、git push。
+```
+
 ## 最少需要什么
 
 新机器需要（Ubuntu 类系统默认通常都有 `python3`）：
@@ -18,6 +96,20 @@
 
 额外需要：
 - 一个只读 GitHub Deploy Key（脚本生成公钥后，你去 GitHub 网页添加）
+
+## 给别人使用时的账号原则
+
+这套工具的代码默认仓库是 `1563669740/Code-Transfer-Station`。作者自己使用时可以保持默认；别人部署时应使用自己的 GitHub 账号、自己的仓库副本，以及新机器上重新生成的 Deploy Key。
+
+推荐流程：
+
+1. 对方 fork 本仓库，或把代码导入到自己的 `OWNER/REPO` 仓库。
+2. 新机器运行 bootstrap 时显式传入自己的仓库：`--repo YOUR_OWNER/YOUR_REPO`。
+3. bootstrap 会在新机器上生成一把新的 SSH deploy key。
+4. 对方把脚本打印的 `.pub` 公钥添加到自己仓库的 Deploy keys。
+5. 私钥只留在那台机器的 `~/.ssh/` 下，不进入源码、不复制给别人、不写入文档或日志。
+
+默认只需要只读 Deploy Key。如果要启用日志回传到代码仓库，才需要给对应 key 写权限，或者更推荐使用独立日志仓库和独立写权限 key。更多原则见 `docs/ACCOUNT_CONFIGURATION.md`。
 
 ## 推荐：用脚本自动配置
 
@@ -121,10 +213,22 @@ wget -q \
 
 如果三种方式都不行，就把 `scripts/bootstrap_new_machine.sh` 的内容手动复制粘贴到新机器的 `/tmp/bootstrap_new_machine.sh`。
 
-无论哪种方式，下载后都一样执行：
+无论哪种方式，下载后都一样执行。作者默认仓库可以不传 `--repo`：
+
+```bash
+bash /tmp/bootstrap_new_machine.sh
+```
+
+如果要明确指定默认仓库，也可以写成：
 
 ```bash
 bash /tmp/bootstrap_new_machine.sh --repo 1563669740/Code-Transfer-Station
+```
+
+别人部署自己的 fork 或团队仓库时，必须改成自己的 `OWNER/REPO`：
+
+```bash
+bash /tmp/bootstrap_new_machine.sh --repo YOUR_OWNER/YOUR_REPO
 ```
 
 脚本运行到 Deploy Key 步骤时，会打印类似：
@@ -144,22 +248,25 @@ https://github.com/1563669740/Code-Transfer-Station/settings/keys
 
 - Title: `server-deploy`
 - Key: 粘贴脚本打印的 `ssh-ed25519 ...`
-- **勾选 `Allow write access`**（日志回传需要写权限，否则服务器执行日志无法推回仓库）
+- 默认**不要勾选 `Allow write access`**。只有在你明确设置 `LOG_PUSH_REMOTE=origin`、希望服务器把日志推回同一个仓库时，才需要写权限；更安全的做法是使用独立日志仓库。
 
 保存后回到终端按 Enter，脚本会继续完成克隆、验证和后台轮询。
 
 ## 常用参数
 
 ```bash
-# 指定仓库
-bash /tmp/bootstrap_new_machine.sh --repo 1563669740/Code-Transfer-Station
+# 作者默认仓库
+bash /tmp/bootstrap_new_machine.sh
+
+# 指定自己的仓库
+bash /tmp/bootstrap_new_machine.sh --repo YOUR_OWNER/YOUR_REPO
 
 # 只验证，不启动后台轮询
-bash /tmp/bootstrap_new_machine.sh --repo 1563669740/Code-Transfer-Station --no-daemon
+bash /tmp/bootstrap_new_machine.sh --repo YOUR_OWNER/YOUR_REPO --no-daemon
 
 # 指定分支和项目目录
 bash /tmp/bootstrap_new_machine.sh \
-  --repo 1563669740/Code-Transfer-Station \
+  --repo YOUR_OWNER/YOUR_REPO \
   --branch main \
   --project-dir "$HOME/codex_projects/project"
 ```
@@ -179,7 +286,7 @@ bash /tmp/bootstrap_new_machine.sh \
 PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple \
 PIP_INSTALL_TIMEOUT=180 \
 PIP_NETWORK_TIMEOUT=20 \
-bash /tmp/bootstrap_new_machine.sh --repo 1563669740/Code-Transfer-Station
+bash /tmp/bootstrap_new_machine.sh --repo YOUR_OWNER/YOUR_REPO
 ```
 
 已经配置好的控制机器也可以用同样环境变量启动轮询脚本：

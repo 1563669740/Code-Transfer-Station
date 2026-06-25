@@ -77,3 +77,12 @@ def test_server_sync_latest_wraps_manual_update_flow():
     assert 'nohup bash scripts/server_pull_run.sh' in text
     assert 'FORCE_AUTOMATION_SCRIPTS="${FORCE_AUTOMATION_SCRIPTS:-1}"' in text
     assert 'Local non-automation changes exist' in text
+
+def test_bootstrap_defaults_to_project_repository_and_keeps_log_push_optional():
+    text = (ROOT / "scripts" / "bootstrap_new_machine.sh").read_text(encoding="utf-8")
+    assert 'REPO_SLUG="${REPO_SLUG:-1563669740/Code-Transfer-Station}"' in text
+    assert "Without --repo, this script deploys the default repository" in text
+    assert "To deploy your own fork or copy, pass --repo YOUR_OWNER/YOUR_REPO" in text
+    assert 'LOG_PUSH_REMOTE="${LOG_PUSH_REMOTE:-}"' in text
+    assert 'LOG_PUSH_REMOTE="$LOG_PUSH_REMOTE"' in text
+    assert "LOG_PUSH_REMOTE=origin" not in text

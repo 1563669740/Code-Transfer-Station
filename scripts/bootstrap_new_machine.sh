@@ -26,6 +26,7 @@ RUN_TIMEOUT="${RUN_TIMEOUT:-600}"
 INTERVAL_SECONDS="${INTERVAL_SECONDS:-60}"
 START_DAEMON="${START_DAEMON:-1}"
 INSTALL_DEPS="${INSTALL_DEPS:-1}"
+LOG_PUSH_REMOTE="${LOG_PUSH_REMOTE:-}"
 
 usage() {
   cat <<EOF
@@ -44,7 +45,14 @@ Options:
 Environment overrides:
   REPO_SLUG, BRANCH, PROJECT_DIR, SSH_ALIAS, DEPLOY_KEY_PATH, LOG_DIR,
   STATE_DIR, RUN_TIMEOUT, INTERVAL_SECONDS, START_DAEMON, INSTALL_DEPS,
-  PIP_INDEX_URL, PIP_INDEX_URLS, PIP_INSTALL_TIMEOUT, PIP_NETWORK_TIMEOUT, PIP_RETRIES
+  LOG_PUSH_REMOTE, PIP_INDEX_URL, PIP_INDEX_URLS, PIP_INSTALL_TIMEOUT,
+  PIP_NETWORK_TIMEOUT, PIP_RETRIES
+
+Notes:
+  Without --repo, this script deploys the default repository:
+    1563669740/Code-Transfer-Station
+  To deploy your own fork or copy, pass --repo YOUR_OWNER/YOUR_REPO or set
+  REPO_SLUG=YOUR_OWNER/YOUR_REPO before running the script.
 EOF
 }
 
@@ -101,6 +109,18 @@ die() {
 
 have() {
   command -v "$1" >/dev/null 2>&1
+}
+
+validate_config() {
+  if [ -z "$REPO_SLUG" ]; then
+    usage >&2
+    die "missing repository. Pass --repo OWNER/REPO or set REPO_SLUG=OWNER/REPO."
+  fi
+
+  case "$REPO_SLUG" in
+    */*) ;;
+    *) die "invalid repository '$REPO_SLUG'. Expected OWNER/REPO." ;;
+  esac
 }
 
 run_sudo() {
@@ -291,8 +311,12 @@ start_daemon() {
     fi
   fi
 
-  log "Starting polling daemon with log push-back enabled"
-  LOG_PUSH_REMOTE=origin \
+  if [ -n "$LOG_PUSH_REMOTE" ]; then
+    log "Starting polling daemon with log push-back enabled: $LOG_PUSH_REMOTE"
+  else
+    log "Starting polling daemon without log push-back"
+  fi
+  LOG_PUSH_REMOTE="$LOG_PUSH_REMOTE" \
   PROJECT_DIR="$PROJECT_DIR" \
   BRANCH="$BRANCH" \
   LOG_DIR="$LOG_DIR" \
@@ -306,6 +330,7 @@ start_daemon() {
 }
 
 main() {
+  validate_config
   log "Bootstrapping control machine for $REPO_SLUG ($BRANCH)"
   ensure_base_tools
   create_or_show_deploy_key

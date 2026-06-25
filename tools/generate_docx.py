@@ -104,7 +104,7 @@ doc.add_paragraph()
 meta = doc.add_paragraph()
 meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
 meta.add_run('日期：2024年6月24日\n').font.size = Pt(11)
-meta.add_run('仓库：github.com/1563669740/Code-Transfer-Station\n').font.size = Pt(11)
+meta.add_run('仓库：github.com/OWNER/REPO（请替换为实际仓库）\n').font.size = Pt(11)
 meta.add_run('分支：main').font.size = Pt(11)
 
 doc.add_page_break()
@@ -264,7 +264,7 @@ add_heading('4.2 发现的问题及修复', level=2)
 add_para('问题 1：没有配置 git remote', bold=True)
 add_output('$ git remote -v\n（空）')
 add_para('修复：')
-add_cmd('$ git remote add origin https://github.com/1563669740/Code-Transfer-Station.git')
+add_cmd('$ git remote add origin https://github.com/OWNER/REPO.git')
 
 add_para('')
 add_para('问题 2：分支名不匹配', bold=True)
@@ -305,11 +305,11 @@ doc.add_page_break()
 # ============================================================
 add_heading('5. GitHub 仓库配置', level=1)
 
-add_para('仓库地址：https://github.com/1563669740/Code-Transfer-Station.git')
-add_para('仓库类型：私有（Private）')
+add_para('仓库地址：https://github.com/OWNER/REPO.git（请替换为实际仓库）')
+add_para('仓库类型：私有（Private）或按团队需要设置。')
 
 add_heading('5.1 本地配置 Remote', level=2)
-add_cmd('$ git remote add origin https://github.com/1563669740/Code-Transfer-Station.git')
+add_cmd('$ git remote add origin https://github.com/OWNER/REPO.git')
 
 add_heading('5.2 获取 Personal Access Token', level=2)
 add_para('1. 打开 GitHub → 右上角头像 → Settings')
@@ -334,13 +334,13 @@ $ git push -u origin main
 add_output("""[main d0ebcdc] 添加 hello world 业务代码...
  4 files changed, 24 insertions(+), 4 deletions(-)
  create mode 100644 src/test.py
- To https://github.com/1563669740/Code-Transfer-Station.git
+ To https://github.com/OWNER/REPO.git
  * [new branch]      main -> main
 """)
 
 add_heading('6.2 安全清理', level=2)
 add_para('推送完成后立即从 Git 配置中清除 Token：')
-add_cmd('$ git remote set-url origin https://github.com/1563669740/Code-Transfer-Station.git')
+add_cmd('$ git remote set-url origin https://github.com/OWNER/REPO.git')
 
 add_note('token 切勿留在 git remote URL 或 .git/config 中。')
 
@@ -371,11 +371,11 @@ add_output("""ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILARXPR9CUM2CXR992Amt7xQ303y2W
 """)
 
 add_heading('7.4 在 GitHub 添加 Deploy Key', level=2)
-add_para('1. 打开 https://github.com/1563669740/Code-Transfer-Station/settings/keys')
+add_para('1. 打开 https://github.com/OWNER/REPO/settings/keys')
 add_para('2. 点 Add deploy key')
 add_para('3. Title 填：server-deploy')
 add_para('4. Key 粘贴公钥内容')
-add_para('5. 不勾 Allow write access（只读更安全）')
+add_para('5. 默认不勾 Allow write access（只读更安全）；只有明确启用日志回传到同一仓库时才需要写权限')
 add_para('6. 点 Add key')
 
 add_heading('7.5 配置 SSH Host', level=2)
@@ -388,7 +388,7 @@ add_code("""Host github-codex-pull
 
 add_heading('7.6 测试连接', level=2)
 add_cmd('$ ssh -T git@github-codex-pull')
-add_output('Hi 1563669740/Code-Transfer-Station! You\'ve successfully authenticated, but GitHub does not provide shell access.')
+add_output('Hi OWNER/REPO! You\'ve successfully authenticated, but GitHub does not provide shell access.')
 
 doc.add_page_break()
 
@@ -399,7 +399,7 @@ add_heading('8. 服务器测试与守护进程启动', level=1)
 
 add_heading('8.1 克隆项目', level=2)
 add_cmd("""$ mkdir -p ~/codex_projects
-$ git clone git@github-codex-pull:1563669740/Code-Transfer-Station.git ~/codex_projects/project
+$ git clone git@github-codex-pull:OWNER/REPO.git ~/codex_projects/project
 """)
 
 add_heading('8.2 手动验证', level=2)
@@ -599,10 +599,10 @@ ssh -T git@github-codex-pull
 
 add_heading('GitHub', level=2)
 add_cmd("""# 仓库地址
-https://github.com/1563669740/Code-Transfer-Station
+https://github.com/OWNER/REPO
 
 # Deploy Keys 管理
-https://github.com/1563669740/Code-Transfer-Station/settings/keys
+https://github.com/OWNER/REPO/settings/keys
 
 # Personal Access Tokens
 https://github.com/settings/tokens
